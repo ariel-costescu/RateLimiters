@@ -3,14 +3,15 @@ package rateLimiters;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
-public class TokenBucketLimiter extends RateLimiter {
+public class FixedWindowLimiter extends RateLimiter {
 
-    private long currentTokens;
+    private int allowance;
     private Instant timeReference;
-    public TokenBucketLimiter(Integer limit, TimeUnit timeUnit) {
+
+    public FixedWindowLimiter(Integer limit, TimeUnit timeUnit) {
         super(limit, timeUnit);
-        currentTokens = limit;
         timeReference = Instant.now();
+        allowance = limit;
     }
 
     @Override
@@ -18,14 +19,17 @@ public class TokenBucketLimiter extends RateLimiter {
         final Instant now = Instant.now();
         long elapsedTimeUnits = timeUnit.toChronoUnit().between(timeReference, now);
         timeReference = now;
-        currentTokens = Math.min(limit, currentTokens + limit * elapsedTimeUnits);
-        if (currentTokens > 0) {
-            acceptMessage(message);
-            currentTokens -= 1;
-            return true;
+        if (elapsedTimeUnits > 0) {
+            allowance = limit - 1;
         } else {
+            allowance -= 1;
+        }
+        if (allowance < 0) {
             dropMessage(message);
             return false;
+        } else {
+            acceptMessage(message);
+            return true;
         }
     }
 }

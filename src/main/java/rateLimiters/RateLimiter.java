@@ -13,4 +13,12 @@ public abstract class RateLimiter {
 
     public abstract boolean tryLimit(String message);
 
+    public void acceptMessage(String message) {
+        System.out.printf("Accepted message: '%s'\n", message);
+    }
+
+    public void dropMessage(String message) {
+        System.out.printf("Dropped message: '%s'\n", message);
+    }
+
 }
