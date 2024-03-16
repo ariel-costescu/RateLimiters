@@ -9,7 +9,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TokenBucketLimiterTest {
 
@@ -25,10 +25,24 @@ class TokenBucketLimiterTest {
 
     @Test
     void whenWithinLimitThenAcceptAllMessages() {
-        List<String> messages = IntStream.range(0, 10)
+        final int nMessages = LIMIT;
+        Boolean allAccepted = tryNMessages(nMessages);
+        assertTrue(allAccepted);
+    }
+
+    @Test
+    void whenOverLimitThenNotAllMessagesAccepted() {
+        final int overLimitBy = 5;
+        final int nMessages = LIMIT + overLimitBy;
+        Boolean allAccepted = tryNMessages(nMessages);
+        assertFalse(allAccepted);
+    }
+
+    private Boolean tryNMessages(int nMessages) {
+        List<String> messages = IntStream.range(0, nMessages)
                 .mapToObj(i -> UUID.randomUUID().toString())
                 .toList();
-        Boolean allAccepted = messages.stream().
+        return messages.stream().
                 map(message -> {
                     try {
                         Thread.sleep(Duration.ofSeconds(1));
@@ -38,6 +52,5 @@ class TokenBucketLimiterTest {
                     return tokenBucketLimiter.tryLimit(message);
                 })
                 .reduce((b1, b2) -> b1 && b2).orElse(false);
-        assertTrue(allAccepted);
     }
 }

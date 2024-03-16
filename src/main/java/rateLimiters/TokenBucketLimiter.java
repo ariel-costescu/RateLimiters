@@ -19,7 +19,7 @@ public class TokenBucketLimiter extends RateLimiter {
         long elapsedTimeUnits = timeUnit.toChronoUnit().between(timeReference, now);
         timeReference = now;
         currentTokens = Math.min(limit, currentTokens + limit * elapsedTimeUnits);
-        if (currentTokens > 1) {
+        if (currentTokens > 0) {
             acceptMessage(message);
             currentTokens -= 1;
             return true;
