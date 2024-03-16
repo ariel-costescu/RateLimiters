@@ -1,6 +1,5 @@
 package rateLimiters;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -13,41 +12,53 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TokenBucketLimiterTest {
 
-    private static final Integer LIMIT = 10;
-    private static final TimeUnit TIME_UNIT = TimeUnit.MINUTES;
-
+    public static final Duration ONE_SECOND = Duration.ofSeconds(1);
     private RateLimiter tokenBucketLimiter;
-
-    @BeforeEach
-    void init() {
-        tokenBucketLimiter = new TokenBucketLimiter(LIMIT, TIME_UNIT);
-    }
 
     @Test
     void whenWithinLimitThenAcceptAllMessages() {
-        final int nMessages = LIMIT;
-        Boolean allAccepted = tryNMessages(nMessages);
+        final int limit = 10;
+        final TimeUnit timeUnit = TimeUnit.MINUTES;
+        tokenBucketLimiter = new TokenBucketLimiter(limit, timeUnit);
+        final boolean allAccepted = tryNMessagesWithPause(limit, ONE_SECOND);
         assertTrue(allAccepted);
     }
 
     @Test
     void whenOverLimitThenNotAllMessagesAccepted() {
+        final int limit = 10;
+        final TimeUnit timeUnit = TimeUnit.MINUTES;
+        tokenBucketLimiter = new TokenBucketLimiter(limit, timeUnit);
         final int overLimitBy = 5;
-        final int nMessages = LIMIT + overLimitBy;
-        Boolean allAccepted = tryNMessages(nMessages);
+        final int nMessages = limit + overLimitBy;
+        final boolean allAccepted = tryNMessagesWithPause(nMessages, ONE_SECOND);
         assertFalse(allAccepted);
     }
 
-    private Boolean tryNMessages(int nMessages) {
+    @Test
+    void whenBucketIsRefilledThenNewMessageAccepted() throws InterruptedException {
+        final int limit = 5;
+        final TimeUnit timeUnit = TimeUnit.SECONDS;
+        tokenBucketLimiter = new TokenBucketLimiter(limit, timeUnit);
+        final boolean allAcceptedAfterOverLimit = tryNMessagesWithPause(limit + 1, null);
+        assertFalse(allAcceptedAfterOverLimit);
+        Thread.sleep(Duration.ofSeconds(1));
+        final boolean allAcceptedAfterBucketRefilled = tryNMessagesWithPause(1, null);
+        assertTrue(allAcceptedAfterBucketRefilled);
+    }
+
+    private boolean tryNMessagesWithPause(int nMessages, Duration duration) {
         List<String> messages = IntStream.range(0, nMessages)
                 .mapToObj(i -> UUID.randomUUID().toString())
                 .toList();
         return messages.stream().
                 map(message -> {
-                    try {
-                        Thread.sleep(Duration.ofSeconds(1));
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
+                    if (duration != null) {
+                        try {
+                            Thread.sleep(duration);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                     return tokenBucketLimiter.tryLimit(message);
                 })
